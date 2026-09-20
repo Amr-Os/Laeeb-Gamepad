@@ -1,6 +1,7 @@
 package io.github.kitswas.virtualgamepadmobile.ui.screens
 
 import android.content.Intent
+import android.content.pm.ActivityInfo
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -32,6 +33,7 @@ import io.github.kitswas.virtualgamepadmobile.R
 import io.github.kitswas.virtualgamepadmobile.data.PreviewBase
 import io.github.kitswas.virtualgamepadmobile.data.PreviewHeightDp
 import io.github.kitswas.virtualgamepadmobile.data.PreviewWidthDp
+import io.github.kitswas.virtualgamepadmobile.ui.utils.LockScreenOrientation
 
 @Composable
 fun AboutScreen(
@@ -42,6 +44,7 @@ fun AboutScreen(
 ) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
+    LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_USER_LANDSCAPE)
 
     // GitHub URLs
     val projectUrl = "https://kitswas.github.io/VirtualGamePad/"

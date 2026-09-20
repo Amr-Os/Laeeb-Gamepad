@@ -8,6 +8,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -17,6 +22,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import io.github.kitswas.virtualgamepadmobile.data.ButtonAnchor
+import io.github.kitswas.virtualgamepadmobile.data.ButtonComponent
+import io.github.kitswas.virtualgamepadmobile.data.CustomProfileStorage
 import io.github.kitswas.virtualgamepadmobile.data.SettingsRepository
 import io.github.kitswas.virtualgamepadmobile.data.defaultBaseColor
 import io.github.kitswas.virtualgamepadmobile.data.defaultColorScheme
@@ -35,8 +43,10 @@ import io.github.kitswas.virtualgamepadmobile.ui.screens.SettingsScreen
 import io.github.kitswas.virtualgamepadmobile.ui.theme.VirtualGamePadMobileTheme
 import io.github.kitswas.virtualgamepadmobile.ui.utils.HapticUtils
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlin.system.exitProcess
 
+internal fun resolveLayoutDestination(isConnected: Boolean): String = "gamepad"
 
 class MainActivity : ComponentActivity() {
 
@@ -44,10 +54,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val settingsRepository = SettingsRepository(this)
 
-        // Create a ViewModel the first time the system calls an activity's onCreate() method.
-        // Re-created activities receive the same ConnectionViewModel instance created by the first activity.
-        // Use the 'by viewModels()' Kotlin property delegate with factory
-        // from the activity-ktx artifact
         val connectionViewModel: ConnectionViewModel by viewModels {
             ConnectionViewModelFactory { ip, port ->
                 if (settingsRepository.saveConnectionCredentials.first()) {
@@ -114,13 +120,74 @@ class MainActivity : ComponentActivity() {
         settingsRepository: SettingsRepository,
         navController: NavHostController = rememberNavController(),
     ) {
+        val connectionState by connectionViewModel.uiState.collectAsState(initial = null)
+        val isConnected = connectionState?.connected == true
+        val scope = rememberCoroutineScope()
+        var customProfileRefreshKey by remember { mutableIntStateOf(0) }
+        var customizationScreenKey by rememberSaveable { mutableIntStateOf(0) }
+
         NavHost(navController = navController, startDestination = "main_menu") {
             composable("main_menu") {
                 MainMenu(
-                    onNavigateToConnectScreen = { navController.navigate("connect_screen") },
-                    onNavigateToSettingsScreen = { navController.navigate("settings_screen") },
-                    onNavigateToAboutScreen = { navController.navigate("about_screen") },
-                    onExit = { exitProcess(0) }
+                    isConnected = isConnected,
+                    onConnectClick = { navController.navigate("connect_screen") },
+                                        onProfileSelect = { profile ->
+                        scope.launch {
+                            val baseConfigs = io.github.kitswas.virtualgamepadmobile.data.defaultButtonConfigs
+                            val context = this@MainActivity
+
+                            val newLayout = when (profile.id) {
+                                "racing_1" -> {
+                                    baseConfigs.toMutableMap().apply {
+                                        put(ButtonComponent.LEFT_ANALOG_STICK, this[ButtonComponent.LEFT_ANALOG_STICK]!!.copy(visible = false))
+                                        put(ButtonComponent.FACE_BUTTONS, this[ButtonComponent.FACE_BUTTONS]!!.copy(anchor = ButtonAnchor.CENTER_LEFT, offsetX = 0.05f))
+                                        put(ButtonComponent.DPAD, this[ButtonComponent.DPAD]!!.copy(anchor = ButtonAnchor.CENTER, offsetX = -0.2f))
+                                        put(ButtonComponent.RIGHT_ANALOG_STICK, this[ButtonComponent.RIGHT_ANALOG_STICK]!!.copy(anchor = ButtonAnchor.CENTER, offsetX = 0.2f))
+                                        put(ButtonComponent.LEFT_TRIGGER, this[ButtonComponent.LEFT_TRIGGER]!!.copy(anchor = ButtonAnchor.CENTER_RIGHT, offsetX = -0.3f, offsetY = 0f, scale = 2.2f))
+                                        put(ButtonComponent.RIGHT_TRIGGER, this[ButtonComponent.RIGHT_TRIGGER]!!.copy(anchor = ButtonAnchor.CENTER_RIGHT, offsetX = -0.05f, offsetY = 0f, scale = 2.2f))
+                                        put(ButtonComponent.LEFT_SHOULDER, this[ButtonComponent.LEFT_SHOULDER]!!.copy(anchor = ButtonAnchor.TOP_LEFT, offsetX = 0.05f))
+                                        put(ButtonComponent.RIGHT_SHOULDER, this[ButtonComponent.RIGHT_SHOULDER]!!.copy(anchor = ButtonAnchor.TOP_LEFT, offsetX = 0.25f))
+                                    }
+                                }
+                                "racing_2" -> {
+                                    baseConfigs.toMutableMap().apply {
+                                        put(ButtonComponent.LEFT_ANALOG_STICK, this[ButtonComponent.LEFT_ANALOG_STICK]!!.copy(visible = false))
+                                        put(ButtonComponent.DPAD, this[ButtonComponent.DPAD]!!.copy(anchor = ButtonAnchor.CENTER_LEFT, offsetX = 0.05f, scale = 1.1f))
+                                        put(ButtonComponent.FACE_BUTTONS, this[ButtonComponent.FACE_BUTTONS]!!.copy(anchor = ButtonAnchor.CENTER_RIGHT, offsetX = -0.05f))
+                                        put(ButtonComponent.RIGHT_ANALOG_STICK, this[ButtonComponent.RIGHT_ANALOG_STICK]!!.copy(anchor = ButtonAnchor.BOTTOM_CENTER, offsetX = 0.35f, offsetY = -0.1f))
+                                        put(ButtonComponent.LEFT_TRIGGER, this[ButtonComponent.LEFT_TRIGGER]!!.copy(anchor = ButtonAnchor.TOP_LEFT, offsetX = 0.05f, scale = 1.4f))
+                                        put(ButtonComponent.RIGHT_TRIGGER, this[ButtonComponent.RIGHT_TRIGGER]!!.copy(anchor = ButtonAnchor.TOP_RIGHT, offsetX = -0.05f, scale = 1.4f))
+                                    }
+                                }
+                                "game_controller" -> baseConfigs
+                                else -> {
+                                    val profileStorage = CustomProfileStorage(context)
+                                    profileStorage.loadProfileConfigs(profile.id) ?: baseConfigs
+                                }
+                            }
+
+                            settingsRepository.setAllButtonConfigs(newLayout)
+                            navController.navigate("gamepad")
+                        }
+                    },
+                    onCreateCustomProfile = {
+                        customizationScreenKey += 1
+                        navController.navigate("gamepad_customization_new")
+                    },
+                    onEditCustomProfile = { profile ->
+                        scope.launch {
+                            val context = this@MainActivity
+                            val profileStorage = CustomProfileStorage(context)
+                            val configs = profileStorage.loadProfileConfigs(profile.id)
+                            if (configs != null) {
+                                settingsRepository.setAllButtonConfigs(configs)
+                            }
+                            navController.navigate("gamepad_customization")
+                        }
+                    },
+                    onNavigateToSettings = { navController.navigate("settings_screen") },
+                    onNavigateToAbout = { navController.navigate("about_screen") },
+                    refreshKey = customProfileRefreshKey
                 )
             }
             composable("connect_screen") {
@@ -173,14 +240,29 @@ class MainActivity : ComponentActivity() {
             composable("settings_screen") {
                 SettingsScreen(
                     onNavigateBack = { navController.popBackStack() },
-                    onNavigateToGamepadCustomization = { navController.navigate("gamepad_customization") },
+                    onNavigateToGamepadCustomization = {
+                        customizationScreenKey += 1
+                        navController.navigate("gamepad_customization")
+                    },
                     settingsRepository = settingsRepository
                 )
             }
             composable("gamepad_customization") {
                 GamepadCustomizationScreen(
                     onNavigateBack = { navController.popBackStack() },
-                    settingsRepository = settingsRepository
+                    settingsRepository = settingsRepository,
+                    isNewProfile = false,
+                    onProfileSaved = { customProfileRefreshKey += 1 }
+                )
+            }
+            composable("gamepad_customization_new") {
+                GamepadCustomizationScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    settingsRepository = settingsRepository,
+                    isNewProfile = true,
+                    onProfileSaved = {
+                        customProfileRefreshKey += 1
+                    }
                 )
             }
             composable("about_screen") {

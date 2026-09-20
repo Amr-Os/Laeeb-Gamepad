@@ -10,9 +10,6 @@ import io.github.kitswas.virtualgamepadmobile.data.ColorScheme
 import io.github.kitswas.virtualgamepadmobile.data.getColorFromBaseColor
 import androidx.compose.material3.ColorScheme as MaterialColorScheme
 
-/**
- * Creates a dark mode color palette for the given base color.
- */
 private fun createDarkColorPalette(baseColor: BaseColor): MaterialColorScheme {
     val darkColorPrimary = getColorFromBaseColor(baseColor, true)
     val onDarkColorPrimary = contrasting(darkColorPrimary)
@@ -36,9 +33,6 @@ private fun createDarkColorPalette(baseColor: BaseColor): MaterialColorScheme {
     )
 }
 
-/**
- * Creates a light mode color palette for the given base color.
- */
 private fun createLightColorPalette(baseColor: BaseColor): MaterialColorScheme {
     val lightColorPrimary = getColorFromBaseColor(baseColor, false)
     val onLightColorPrimary = contrasting(lightColorPrimary)
@@ -68,7 +62,6 @@ fun VirtualGamePadMobileTheme(
     baseColor: BaseColor,
     content: @Composable () -> Unit
 ) {
-
     val darkTheme: Boolean = when (darkMode) {
         ColorScheme.LIGHT -> false
         ColorScheme.DARK -> true

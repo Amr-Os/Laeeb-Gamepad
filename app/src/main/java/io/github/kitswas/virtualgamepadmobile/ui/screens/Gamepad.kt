@@ -1,9 +1,12 @@
 package io.github.kitswas.virtualgamepadmobile.ui.screens
-
+import android.content.pm.ActivityInfo
+import io.github.kitswas.virtualgamepadmobile.ui.utils.LockScreenOrientation
 import android.annotation.SuppressLint
 import android.content.res.Configuration
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -11,6 +14,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -41,6 +45,7 @@ fun GamePad(
     connectionViewModel: ConnectionViewModel?,
     onNavigateBack: () -> Unit,
 ) {
+    LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_USER_LANDSCAPE)
     val gamepadState by rememberSaveable { mutableStateOf(GamepadReading()) }
     val context = LocalContext.current
     val settingsRepository = remember { SettingsRepository(context) }
@@ -56,20 +61,20 @@ fun GamePad(
 
     val isStopping = remember { mutableStateOf(false) }
 
-    DrawGamepad(screenWidth, screenHeight, gamepadState, buttonConfigs)
+    Box(modifier = Modifier.fillMaxSize()) {
+        DrawGamepad(screenWidth, screenHeight, gamepadState, buttonConfigs)
+    }
 
     val activity = LocalContext.current.findActivity()
-    // disconnect on back press
     androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
         .addObserver(androidx.lifecycle.LifecycleEventObserver { _, event ->
             if (event == androidx.lifecycle.Lifecycle.Event.ON_DESTROY
-                && activity?.isChangingConfigurations != true // ignore screen rotation
+                && activity?.isChangingConfigurations != true
             ) {
                 if (connectionViewModel != null) {
                     CoroutineScope(Dispatchers.IO).launch {
                         try {
                             isStopping.value = true
-                            // unset all keys before disconnecting
                             gamepadState.ButtonsUp = gamepadState.ButtonsDown
                             gamepadState.ButtonsDown = 0
                             gamepadState.LeftThumbstickX = 0F
@@ -79,19 +84,15 @@ fun GamePad(
                             gamepadState.LeftTrigger = 0F
                             gamepadState.RightTrigger = 0F
                             connectionViewModel.enqueueGamepadState(gamepadState)
-                            connectionViewModel.disconnect()
-                            Log.d(tag, "Disconnected")
                         } catch (e: Exception) {
-                            Log.d(tag, "Error during disconnect: ${e.message}")
+                            Log.d(tag, "Error while cleaning up gamepad state: ${e.message}")
                         }
                     }
                 }
             }
         })
 
-    // Monitor connection state and handle errors
-    val connectionState by connectionViewModel?.uiState?.collectAsState()
-        ?: remember { mutableStateOf(null) }
+    val connectionState = connectionViewModel?.uiState?.collectAsState(initial = null)?.value
 
     val connectionLostMessage = connectionState?.takeIf { !it.connected }?.let { state ->
         state.error?.let {
@@ -103,7 +104,6 @@ fun GamePad(
         if (connectionLostMessage != null) {
             Log.d(tag, connectionLostMessage)
             Toast.makeText(context, connectionLostMessage, Toast.LENGTH_LONG).show()
-            onNavigateBack()
         }
     }
 

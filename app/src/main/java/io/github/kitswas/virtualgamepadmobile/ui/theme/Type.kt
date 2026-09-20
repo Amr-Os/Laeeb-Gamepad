@@ -7,58 +7,26 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import io.github.kitswas.virtualgamepadmobile.R
 
-// Set of Material typography styles to start with
 val Typography = Typography(
     bodyLarge = TextStyle(
-        fontFamily = FontFamily(androidx.compose.ui.text.font.Font(R.font.oxanium)),
+        fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Normal,
         fontSize = 20.sp
-    ),
-    bodyMedium = TextStyle(
-        fontFamily = FontFamily(androidx.compose.ui.text.font.Font(R.font.oxanium)),
-        fontWeight = FontWeight.Normal,
-        fontSize = 16.sp
-    ),
-    bodySmall = TextStyle(
-        fontFamily = FontFamily(androidx.compose.ui.text.font.Font(R.font.oxanium)),
-        fontWeight = FontWeight.Normal,
-        fontSize = 12.sp
     ),
     labelLarge = TextStyle(
-        fontFamily = FontFamily(androidx.compose.ui.text.font.Font(R.font.astro_space)),
-        fontWeight = FontWeight.Normal,
+        fontFamily = FontFamily.Default,
+        fontWeight = FontWeight.Medium,
         fontSize = 20.sp
     ),
-    labelMedium = TextStyle(
-        fontFamily = FontFamily(androidx.compose.ui.text.font.Font(R.font.astro_space)),
-        fontWeight = FontWeight.Normal,
-        fontSize = 16.sp
-    ),
-    labelSmall = TextStyle(
-        fontFamily = FontFamily(androidx.compose.ui.text.font.Font(R.font.astro_space)),
-        fontWeight = FontWeight.Normal,
-        fontSize = 12.sp
-    ),
     titleLarge = TextStyle(
-        fontFamily = FontFamily(androidx.compose.ui.text.font.Font(R.font.android_insomnia)),
-        fontWeight = FontWeight.Normal,
+        fontFamily = FontFamily.Default,
+        fontWeight = FontWeight.SemiBold,
         fontSize = 32.sp
-    ),
-    titleMedium = TextStyle(
-        fontFamily = FontFamily(androidx.compose.ui.text.font.Font(R.font.android_insomnia)),
-        fontWeight = FontWeight.Normal,
-        fontSize = 28.sp
-    ),
-    titleSmall = TextStyle(
-        fontFamily = FontFamily(androidx.compose.ui.text.font.Font(R.font.android_insomnia)),
-        fontWeight = FontWeight.Normal,
-        fontSize = 24.sp
-    ),
+    )
+    // Add remaining required styles using FontFamily.Default
 )
 
-// Helper function to get a TextStyle for Face Buttons based on size
 fun faceButtonTextStyle(size: Dp): TextStyle {
     val threshold = 20.dp
     val fontSize = when {
@@ -66,7 +34,7 @@ fun faceButtonTextStyle(size: Dp): TextStyle {
         else -> (size.value * 0.4).sp
     }
     return TextStyle(
-        fontFamily = FontFamily(androidx.compose.ui.text.font.Font(R.font.astro_space)),
+        fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Bold,
         fontSize = fontSize
     )
