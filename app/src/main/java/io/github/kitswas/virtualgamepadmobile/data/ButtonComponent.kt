@@ -81,7 +81,11 @@ data class ButtonConfig(
     val scale: Float = 1.0f,
     val offsetX: Float = 0f,
     val offsetY: Float = 0f,
-    val anchor: ButtonAnchor = component.defaultAnchor
+    val anchor: ButtonAnchor = component.defaultAnchor,
+    // Analog stick only: whether tilt sensors drive this stick (per-profile).
+    val gyro: Boolean = false,
+    // Analog stick only: relative size of the inner knob (1.0 = default).
+    val analogInnerScale: Float = 1.0f
 ) : Parcelable {
     companion object {
         fun default(component: ButtonComponent) = ButtonConfig(component)

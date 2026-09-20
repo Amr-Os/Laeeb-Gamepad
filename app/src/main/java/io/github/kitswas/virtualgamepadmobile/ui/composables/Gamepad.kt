@@ -13,6 +13,7 @@ import io.github.kitswas.VGP_Data_Exchange.GamepadReading
 import io.github.kitswas.virtualgamepadmobile.data.ButtonAnchor
 import io.github.kitswas.virtualgamepadmobile.data.ButtonComponent
 import io.github.kitswas.virtualgamepadmobile.data.ButtonConfig
+import io.github.kitswas.virtualgamepadmobile.data.StickResponseMode
 
 /**
  * Convert ButtonAnchor to Compose Alignment
@@ -35,6 +36,9 @@ fun DrawGamepad(
     heightDp: Int,
     gamepadState: GamepadReading,
     buttonConfigs: Map<ButtonComponent, ButtonConfig>,
+    stickResponseMode: StickResponseMode = StickResponseMode.default,
+    gyroX: Float = 0f,
+    gyroY: Float = 0f,
 ) {
     // Assuming Landscape orientation
     val baseDp = heightDp
@@ -76,8 +80,14 @@ fun DrawGamepad(
                     ),
                     outerCircleWidth = (baseDp / 8 * config.scale).dp,
                     innerCircleRadius = (baseDp / 12 * config.scale).dp,
+                    knobScale = config.analogInnerScale,
                     gamepadState = gamepadState,
                     type = AnalogStickType.LEFT,
+                    responseMode = stickResponseMode,
+                    wholeAreaInteractive = true,
+                    gyroOn = config.gyro,
+                    gyroX = gyroX,
+                    gyroY = gyroY,
                 )
             }
 
@@ -90,8 +100,14 @@ fun DrawGamepad(
                     ),
                     outerCircleWidth = (baseDp / 8 * config.scale).dp,
                     innerCircleRadius = (baseDp / 12 * config.scale).dp,
+                    knobScale = config.analogInnerScale,
                     gamepadState = gamepadState,
                     type = AnalogStickType.RIGHT,
+                    responseMode = stickResponseMode,
+                    wholeAreaInteractive = true,
+                    gyroOn = config.gyro,
+                    gyroX = gyroX,
+                    gyroY = gyroY,
                 )
             }
 

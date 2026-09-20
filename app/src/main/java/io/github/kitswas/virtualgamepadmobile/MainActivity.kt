@@ -12,7 +12,6 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -124,7 +123,6 @@ class MainActivity : ComponentActivity() {
         val isConnected = connectionState?.connected == true
         val scope = rememberCoroutineScope()
         var customProfileRefreshKey by remember { mutableIntStateOf(0) }
-        var customizationScreenKey by rememberSaveable { mutableIntStateOf(0) }
 
         NavHost(navController = navController, startDestination = "main_menu") {
             composable("main_menu") {
@@ -167,23 +165,15 @@ class MainActivity : ComponentActivity() {
                             }
 
                             settingsRepository.setAllButtonConfigs(newLayout)
+                            settingsRepository.setActiveProfileId(profile.id)
                             navController.navigate("gamepad")
                         }
                     },
                     onCreateCustomProfile = {
-                        customizationScreenKey += 1
                         navController.navigate("gamepad_customization_new")
                     },
                     onEditCustomProfile = { profile ->
-                        scope.launch {
-                            val context = this@MainActivity
-                            val profileStorage = CustomProfileStorage(context)
-                            val configs = profileStorage.loadProfileConfigs(profile.id)
-                            if (configs != null) {
-                                settingsRepository.setAllButtonConfigs(configs)
-                            }
-                            navController.navigate("gamepad_customization")
-                        }
+                        navController.navigate("gamepad_customization/${profile.id}")
                     },
                     onNavigateToSettings = { navController.navigate("settings_screen") },
                     onNavigateToAbout = { navController.navigate("about_screen") },
@@ -241,16 +231,22 @@ class MainActivity : ComponentActivity() {
                 SettingsScreen(
                     onNavigateBack = { navController.popBackStack() },
                     onNavigateToGamepadCustomization = {
-                        customizationScreenKey += 1
-                        navController.navigate("gamepad_customization")
+                        navController.navigate("gamepad_customization/")
                     },
                     settingsRepository = settingsRepository
                 )
             }
-            composable("gamepad_customization") {
+            composable(
+                "gamepad_customization/{profileId}",
+                arguments = listOf(
+                    navArgument("profileId") { type = NavType.StringType; defaultValue = "" }
+                )
+            ) { backStackEntry ->
+                val profileId = backStackEntry.arguments?.getString("profileId").orEmpty()
                 GamepadCustomizationScreen(
                     onNavigateBack = { navController.popBackStack() },
                     settingsRepository = settingsRepository,
+                    profileId = profileId.takeIf { it.isNotEmpty() },
                     isNewProfile = false,
                     onProfileSaved = { customProfileRefreshKey += 1 }
                 )

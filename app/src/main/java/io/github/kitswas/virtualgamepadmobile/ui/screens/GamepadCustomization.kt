@@ -36,6 +36,7 @@ import io.github.kitswas.virtualgamepadmobile.data.ButtonAnchor
 import io.github.kitswas.virtualgamepadmobile.data.ButtonComponent
 import io.github.kitswas.virtualgamepadmobile.data.ButtonConfig
 import io.github.kitswas.virtualgamepadmobile.data.CustomProfileStorage
+import io.github.kitswas.virtualgamepadmobile.data.SCALE_VALUE_RANGE
 import io.github.kitswas.virtualgamepadmobile.data.SettingsRepository
 import io.github.kitswas.virtualgamepadmobile.data.defaultButtonConfigs
 import io.github.kitswas.virtualgamepadmobile.ui.composables.*
@@ -107,6 +108,7 @@ private fun getDragBounds(
 fun GamepadCustomizationScreen(
     onNavigateBack: () -> Unit,
     settingsRepository: SettingsRepository,
+    profileId: String? = null,
     isNewProfile: Boolean = false,
     onProfileSaved: (() -> Unit)? = null
 ) {
@@ -114,9 +116,12 @@ fun GamepadCustomizationScreen(
 
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current.density
+    val context = LocalContext.current
+    val profileStorage = remember { CustomProfileStorage(context) }
+    val editingProfileId = profileId?.takeIf { it.isNotBlank() }
 
     // State Tracking
-    val initialConfigs by settingsRepository.buttonConfigs.collectAsState(initial = null)
+    val settingsConfigs by settingsRepository.buttonConfigs.collectAsState(initial = null)
     var isLoaded by remember { mutableStateOf(false) }
     var baselineConfigs by remember { mutableStateOf(defaultButtonConfigs) }
     var editableConfigs by remember { mutableStateOf(defaultButtonConfigs) }
@@ -132,9 +137,20 @@ fun GamepadCustomizationScreen(
     var pillOffsetX by remember { mutableFloatStateOf(0f) }
     var pillOffsetY by remember { mutableFloatStateOf(0f) }
 
-    LaunchedEffect(initialConfigs, isNewProfile) {
-        if (initialConfigs != null) {
-            baselineConfigs = if (isNewProfile) defaultButtonConfigs else initialConfigs!!
+    // When editing an existing profile, load its saved config directly from storage so
+    // edits are based on the stored layout (not whatever happens to be active).
+    LaunchedEffect(editingProfileId) {
+        if (editingProfileId != null) {
+            val loaded = profileStorage.loadProfileConfigs(editingProfileId)
+            baselineConfigs = loaded ?: defaultButtonConfigs
+            editableConfigs = baselineConfigs
+            isLoaded = true
+        }
+    }
+
+    LaunchedEffect(settingsConfigs, isNewProfile) {
+        if (editingProfileId == null && settingsConfigs != null) {
+            baselineConfigs = if (isNewProfile) defaultButtonConfigs else settingsConfigs!!
             editableConfigs = baselineConfigs
             isLoaded = true
         }
@@ -142,8 +158,6 @@ fun GamepadCustomizationScreen(
 
     LaunchedEffect(isNewProfile) {
         if (isNewProfile) {
-            baselineConfigs = defaultButtonConfigs
-            editableConfigs = defaultButtonConfigs
             selectedComponent = null
             showAddMenu = false
             showSettingsMenu = false
@@ -158,21 +172,26 @@ fun GamepadCustomizationScreen(
     }
 
     val dummyState = remember { GamepadReading() }
-    val context = LocalContext.current
-    val profileStorage = remember { CustomProfileStorage(context) }
 
     val saveAndExit = {
         scope.launch {
-            settingsRepository.setAllButtonConfigs(editableConfigs)
-
-            if (isNewProfile) {
+            if (editingProfileId != null) {
+                val existingName = profileStorage.listProfiles()
+                    .find { it.id == editingProfileId }?.name ?: "Custom Layout"
+                profileStorage.saveProfile(editingProfileId, existingName, editableConfigs)
+                settingsRepository.setActiveProfileId(editingProfileId)
+                onProfileSaved?.invoke()
+            } else if (isNewProfile) {
                 val newProfileId = "custom_${System.currentTimeMillis()}"
                 val newProfileName = "Custom Layout ${profileStorage.listProfiles().size + 1}"
                 Log.d("CustomProfile", "Saving new profile $newProfileId ($newProfileName)")
                 profileStorage.saveProfile(newProfileId, newProfileName, editableConfigs)
+                settingsRepository.setActiveProfileId(newProfileId)
                 Log.d("CustomProfile", "Saved profile file count=${profileStorage.listProfiles().size}")
                 onProfileSaved?.invoke()
             }
+
+            settingsRepository.setAllButtonConfigs(editableConfigs)
 
             showExitDialog = false
             onNavigateBack()
@@ -266,8 +285,8 @@ fun GamepadCustomizationScreen(
                         ) {
                             Box(modifier = Modifier.align(Alignment.Center)) {
                                 when (component) {
-                                    ButtonComponent.LEFT_ANALOG_STICK -> AnalogStick(outerCircleWidth = (baseDp / 8 * config.scale).dp, innerCircleRadius = (baseDp / 12 * config.scale).dp, type = AnalogStickType.LEFT, gamepadState = dummyState)
-                                    ButtonComponent.RIGHT_ANALOG_STICK -> AnalogStick(outerCircleWidth = (baseDp / 8 * config.scale).dp, innerCircleRadius = (baseDp / 12 * config.scale).dp, type = AnalogStickType.RIGHT, gamepadState = dummyState)
+                                    ButtonComponent.LEFT_ANALOG_STICK -> AnalogStick(outerCircleWidth = (baseDp / 8 * config.scale).dp, innerCircleRadius = (baseDp / 12 * config.scale).dp, knobScale = config.analogInnerScale, type = AnalogStickType.LEFT, gamepadState = dummyState)
+                                    ButtonComponent.RIGHT_ANALOG_STICK -> AnalogStick(outerCircleWidth = (baseDp / 8 * config.scale).dp, innerCircleRadius = (baseDp / 12 * config.scale).dp, knobScale = config.analogInnerScale, type = AnalogStickType.RIGHT, gamepadState = dummyState)
                                     ButtonComponent.DPAD -> Dpad(size = (0.45 * baseDp * config.scale).dp, gamepadState = dummyState)
                                     ButtonComponent.FACE_BUTTONS -> FaceButtons(size = (0.45 * baseDp * config.scale).dp, gamepadState = dummyState)
                                     ButtonComponent.LEFT_TRIGGER -> Trigger(type = TriggerType.LEFT, size = (baseDp / 6 * config.scale).dp, gamepadState = dummyState)
@@ -396,6 +415,60 @@ fun GamepadCustomizationScreen(
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
+
+                    if (selectedComponent == ButtonComponent.LEFT_ANALOG_STICK ||
+                        selectedComponent == ButtonComponent.RIGHT_ANALOG_STICK
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Slider(
+                                value = currentConfig.analogInnerScale,
+                                onValueChange = { newInnerScale ->
+                                    editableConfigs = editableConfigs.toMutableMap().apply {
+                                        put(selectedComponent!!, currentConfig.copy(analogInnerScale = newInnerScale))
+                                    }
+                                },
+                                valueRange = SCALE_VALUE_RANGE,
+                                colors = SliderDefaults.colors(
+                                    thumbColor = PristineWhite,
+                                    activeTrackColor = Color(0x88FFFFFF),
+                                    inactiveTrackColor = Color(0x44FFFFFF)
+                                ),
+                                modifier = Modifier.weight(1f)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("Knob", color = PristineWhite, style = MaterialTheme.typography.bodySmall)
+                                Text("${(currentConfig.analogInnerScale * 100).toInt()}%", color = PristineWhite, style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Gyro", color = PristineWhite, style = MaterialTheme.typography.bodySmall)
+                            Spacer(modifier = Modifier.weight(1f))
+                            Switch(
+                                checked = currentConfig.gyro,
+                                onCheckedChange = { enabled ->
+                                    editableConfigs = editableConfigs.toMutableMap().apply {
+                                        put(selectedComponent!!, currentConfig.copy(gyro = enabled))
+                                    }
+                                },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = PristineWhite,
+                                    checkedTrackColor = Color(0x88388E3C),
+                                    uncheckedThumbColor = Color(0x88FFFFFF),
+                                    uncheckedTrackColor = Color(0x44FFFFFF)
+                                )
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
 
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
