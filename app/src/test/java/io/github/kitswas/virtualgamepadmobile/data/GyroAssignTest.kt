@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlin.math.PI
 
 class GyroAssignTest {
     @Test
@@ -125,23 +126,41 @@ class GyroAssignTest {
     }
 
     @Test
-    fun matchingReferencePitchIsCentered() {
-        val steer = steerDeflectionFromPitch(pitch = -0.5f, refPitch = -0.5f)
+    fun matchingReferenceBendIsCentered() {
+        val steer = steerDeflectionFromRoll(roll = -0.5f, refRoll = -0.5f)
         assertEquals(0f, steer, 0.001f)
     }
 
     @Test
-    fun topNodAwayFromReferenceProducesForwardDeflection() {
-        val steer = steerDeflectionFromPitch(pitch = 0.35f, refPitch = 0f)
+    fun topBendAwayFromReferenceProducesDeflection() {
+        val steer = steerDeflectionFromRoll(roll = 0.35f, refRoll = 0f)
         assertTrue(steer > 0f)
         assertTrue(steer <= 1f)
     }
 
     @Test
-    fun bottomNodFromReferenceProducesBackwardDeflection() {
-        val steer = steerDeflectionFromPitch(pitch = -0.35f, refPitch = 0f)
+    fun bottomBendFromReferenceProducesDeflection() {
+        val steer = steerDeflectionFromRoll(roll = -0.35f, refRoll = 0f)
         assertTrue(steer < 0f)
         assertTrue(steer >= -1f)
+    }
+
+    @Test
+    fun quarterTurnBendReachesFullDeflection() {
+        // The full range is a quarter turn: with the phone's back fully toward the
+        // ceiling/ground the bend is ±π/2, which must drive the stick to its maximum.
+        val up = steerDeflectionFromRoll(roll = (PI / 2).toFloat(), refRoll = 0f)
+        assertEquals(1f, up, 0.001f)
+        val down = steerDeflectionFromRoll(roll = (-PI / 2).toFloat(), refRoll = 0f)
+        assertEquals(-1f, down, 0.001f)
+    }
+
+    @Test
+    fun restingHoldAtTheReferenceIsCentered() {
+        // The reference is captured at the rest (gamepad) pose, so even a fairly bent
+        // hold that matches the captured reference must produce a centered stick.
+        val atRef = steerDeflectionFromRoll(roll = 0.8f, refRoll = 0.8f)
+        assertEquals(0f, atRef, 0.001f)
     }
 
     @Test

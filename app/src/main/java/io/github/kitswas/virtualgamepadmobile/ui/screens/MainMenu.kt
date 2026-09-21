@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
@@ -40,10 +41,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import io.github.kitswas.virtualgamepadmobile.R
 import io.github.kitswas.virtualgamepadmobile.data.CustomProfileStorage
 import io.github.kitswas.virtualgamepadmobile.ui.composables.ResponsiveGrid
 import io.github.kitswas.virtualgamepadmobile.ui.theme.DeepSurface
-import io.github.kitswas.virtualgamepadmobile.ui.theme.PremiumGold
+import io.github.kitswas.virtualgamepadmobile.ui.theme.PristineWhite
 import io.github.kitswas.virtualgamepadmobile.ui.theme.PristineWhite
 import io.github.kitswas.virtualgamepadmobile.ui.theme.SlateGray
 import io.github.kitswas.virtualgamepadmobile.ui.utils.LockScreenOrientation
@@ -74,8 +76,9 @@ fun MainMenu(
     val lifecycleOwner = LocalLifecycleOwner.current
     val profileStorage = remember { CustomProfileStorage(context) }
     var customProfiles by remember { mutableStateOf(listOf<GamepadProfile>()) }
-    val unifiedProfiles = remember(customProfiles) {
-        listOf(GamepadProfile("game_controller", "Game controller", false)) + customProfiles
+    val defaultProfileName = stringResource(R.string.main_default_profile)
+    val unifiedProfiles = remember(customProfiles, defaultProfileName) {
+        listOf(GamepadProfile("game_controller", defaultProfileName, false)) + customProfiles
     }
 
     val refreshCustomProfiles = {
@@ -113,9 +116,9 @@ fun MainMenu(
                     selected = currentTab == 0,
                     onClick = { currentTab = 0; onNavigateToSettings() },
                     icon = { Icon(Icons.Default.Settings, contentDescription = null) },
-                    label = { Text("الإعدادات", style = MaterialTheme.typography.bodySmall) },
+                    label = { Text(stringResource(R.string.menu_settings), style = MaterialTheme.typography.bodySmall) },
                     colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = PremiumGold,
+                        selectedIconColor = PristineWhite,
                         unselectedIconColor = Color.Gray
                     )
                 )
@@ -123,9 +126,9 @@ fun MainMenu(
                     selected = currentTab == 1,
                     onClick = { currentTab = 1; onNavigateToAbout() },
                     icon = { Icon(Icons.Default.Star, contentDescription = null) },
-                    label = { Text("ترقية", style = MaterialTheme.typography.bodySmall) },
+                    label = { Text(stringResource(R.string.menu_about), style = MaterialTheme.typography.bodySmall) },
                     colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = PremiumGold,
+                        selectedIconColor = PristineWhite,
                         unselectedIconColor = Color.Gray
                     )
                 )
@@ -133,10 +136,10 @@ fun MainMenu(
                     selected = currentTab == 2,
                     onClick = { currentTab = 2 },
                     icon = { Icon(Icons.Default.Home, contentDescription = null) },
-                    label = { Text("الرئيسية", style = MaterialTheme.typography.bodySmall) },
+                    label = { Text(stringResource(R.string.menu_home), style = MaterialTheme.typography.bodySmall) },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = PristineWhite,
-                        indicatorColor = Color(0xFF990000), 
+                        indicatorColor = Color(0xFF2E2E2E),
                         unselectedIconColor = Color.Gray
                     )
                 )
@@ -146,7 +149,7 @@ fun MainMenu(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFF0F0F13))
+                .background(Color(0xFF0E0E0E))
                 .padding(paddingValues)
                 .padding(16.dp)
                 .verticalScroll(rememberScrollState()),
@@ -156,8 +159,8 @@ fun MainMenu(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(24.dp))
-                    .background(Color(0xFF15161B))
-                    .border(1.dp, Color(0x1AFFFFFF), RoundedCornerShape(24.dp))
+                    .background(Color(0xFF151515))
+                    .border(1.dp, Color(0xFF262626), RoundedCornerShape(24.dp))
                     .padding(horizontal = 16.dp, vertical = 14.dp)
             ) {
                 Row(
@@ -167,7 +170,7 @@ fun MainMenu(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Remote Gamepad",
+                            text = stringResource(R.string.main_title),
                             style = MaterialTheme.typography.titleLarge.copy(
                                 color = PristineWhite,
                                 fontWeight = FontWeight.SemiBold,
@@ -177,8 +180,8 @@ fun MainMenu(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = if (isConnected) "Connected" else "Not connected",
-                            color = if (isConnected) Color(0xFF7CF0A6) else Color(0xFF9CA3AF),
+                            text = if (isConnected) stringResource(R.string.main_connected) else stringResource(R.string.main_disconnected),
+                            color = if (isConnected) PristineWhite else Color(0xFF9CA3AF),
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
@@ -187,18 +190,14 @@ fun MainMenu(
                         modifier = Modifier
                             .shadow(8.dp, RoundedCornerShape(999.dp), clip = false)
                             .clip(RoundedCornerShape(999.dp))
-                            .background(
-                                brush = Brush.horizontalGradient(
-                                    listOf(Color(0xFFFF2A4D), Color(0xFFD9183B))
-                                )
-                            )
+                            .background(PristineWhite)
                     ) {
                         Button(
                             onClick = onConnectClick,
                             shape = RoundedCornerShape(999.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = Color.Transparent,
-                                contentColor = PristineWhite
+                                contentColor = Color(0xFF0E0E0E)
                             ),
                             contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp),
                             elevation = null,
@@ -208,13 +207,13 @@ fun MainMenu(
                                 Icon(
                                     imageVector = Icons.Default.Refresh,
                                     contentDescription = null,
-                                    tint = PristineWhite,
+                                    tint = Color(0xFF0E0E0E),
                                     modifier = Modifier.size(18.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = if (isConnected) "متصل" else "التوصيل",
-                                    color = PristineWhite,
+                                    text = if (isConnected) stringResource(R.string.main_connected) else stringResource(R.string.connect_button),
+                                    color = Color(0xFF0E0E0E),
                                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold)
                                 )
                             }
@@ -228,7 +227,7 @@ fun MainMenu(
             Column(modifier = Modifier.fillMaxWidth()) {
                 if (unifiedProfiles.isEmpty()) {
                     Text(
-                        text = "No custom layouts created yet",
+                        text = stringResource(R.string.main_no_layouts),
                         color = Color(0xFF9CA3AF),
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier
@@ -265,9 +264,9 @@ fun MainMenu(
                                         val sendIntent = Intent(Intent.ACTION_SEND).apply {
                                             type = "text/plain"
                                             putExtra(Intent.EXTRA_TEXT, content)
-                                            putExtra(Intent.EXTRA_SUBJECT, "Custom Layout ${profile.name}")
+                                            putExtra(Intent.EXTRA_SUBJECT, context.getString(R.string.main_share_subject, profile.name))
                                         }
-                                        context.startActivity(Intent.createChooser(sendIntent, "Share layout"))
+                                        context.startActivity(Intent.createChooser(sendIntent, context.getString(R.string.main_share_title)))
                                     }
                                 }
                             } else null
@@ -294,7 +293,7 @@ fun MainMenu(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.padding(vertical = 4.dp)
                     ) {
-                        Text(text = "New custom layout +", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
+                        Text(text = stringResource(R.string.main_new_layout), style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
                     }
                 }
             }
@@ -409,7 +408,7 @@ Row(
 
         if (showDefaultLabel) {
             Text(
-                text = "Default",
+                text = stringResource(R.string.main_default_badge),
                 color = Color(0xFF9CA3AF),
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(top = 2.dp)
@@ -443,7 +442,7 @@ Row(
                 onDismissRequest = { showOptionsMenu = false }
             ) {
                 DropdownMenuItem(
-                    text = { Text("Update") },
+                    text = { Text(stringResource(R.string.profile_update)) },
                     leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
                     onClick = {
                         showOptionsMenu = false
@@ -451,7 +450,7 @@ Row(
                     }
                 )
                 DropdownMenuItem(
-                    text = { Text("Rename") },
+                    text = { Text(stringResource(R.string.profile_rename)) },
                     leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
                     onClick = {
                         showOptionsMenu = false
@@ -460,7 +459,7 @@ Row(
                     }
                 )
                 DropdownMenuItem(
-                    text = { Text("Share") },
+                    text = { Text(stringResource(R.string.profile_share)) },
                     leadingIcon = { Icon(Icons.Default.Share, contentDescription = null) },
                     onClick = {
                         showOptionsMenu = false
@@ -468,7 +467,7 @@ Row(
                     }
                 )
                 DropdownMenuItem(
-                    text = { Text("Delete") },
+                    text = { Text(stringResource(R.string.profile_delete)) },
                     leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
                     onClick = {
                         showOptionsMenu = false
@@ -486,12 +485,12 @@ Row(
     if (showRenameDialog) {
         AlertDialog(
             onDismissRequest = { showRenameDialog = false },
-            title = { Text("Rename layout") },
+            title = { Text(stringResource(R.string.main_rename_title)) },
             text = {
                 OutlinedTextField(
                     value = renameFieldState.value,
                     onValueChange = { renameFieldState.value = it },
-                    label = { Text("New name") },
+                    label = { Text(stringResource(R.string.main_rename_label)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -504,12 +503,12 @@ Row(
                     }
                     showRenameDialog = false
                 }) {
-                    Text("Save",color=Color(0xFFFF2A4D))
+                    Text(stringResource(R.string.save),color=PristineWhite)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showRenameDialog = false }) {
-                    Text("Cancel", color = Color(0xFF6B6B6B))
+                    Text(stringResource(R.string.cancel), color = Color(0xFF6B6B6B))
                 }
             }
         )

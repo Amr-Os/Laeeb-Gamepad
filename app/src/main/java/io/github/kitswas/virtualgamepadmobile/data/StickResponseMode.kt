@@ -1,5 +1,8 @@
 package io.github.kitswas.virtualgamepadmobile.data
 
+import android.os.Parcelable
+import kotlinx.parcelize.Parcelize
+import kotlinx.serialization.Serializable
 import kotlin.math.pow
 
 /**
@@ -12,11 +15,13 @@ import kotlin.math.pow
  * small deflections (reacts sooner, fights client deadzones), exponents > 1
  * emphasize fine control near the center.
  */
+@Serializable
+@Parcelize
 enum class StickResponseMode(
     val displayName: String,
     val exponent: Float,
     val sensitivity: Float,
-) {
+) : Parcelable {
     STANDARD("Standard", 1.0f, 1.0f),
     PRECISE("Precise", 1.5f, 0.9f),
     RESPONSIVE("Responsive", 0.7f, 1.15f),

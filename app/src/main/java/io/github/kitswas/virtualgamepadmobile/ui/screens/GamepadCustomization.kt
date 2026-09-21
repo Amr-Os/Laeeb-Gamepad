@@ -38,6 +38,7 @@ import io.github.kitswas.virtualgamepadmobile.data.ButtonConfig
 import io.github.kitswas.virtualgamepadmobile.data.CustomProfileStorage
 import io.github.kitswas.virtualgamepadmobile.data.SCALE_VALUE_RANGE
 import io.github.kitswas.virtualgamepadmobile.data.SettingsRepository
+import io.github.kitswas.virtualgamepadmobile.data.StickResponseMode
 import io.github.kitswas.virtualgamepadmobile.data.defaultButtonConfigs
 import io.github.kitswas.virtualgamepadmobile.ui.composables.*
 import io.github.kitswas.virtualgamepadmobile.ui.theme.PristineWhite
@@ -112,7 +113,9 @@ fun GamepadCustomizationScreen(
     isNewProfile: Boolean = false,
     onProfileSaved: (() -> Unit)? = null
 ) {
-    LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_USER_LANDSCAPE)
+    // Layout editor needs landscape like the gamepad itself. FIXED landscape:
+    // any rotation while the canvas is up piles the widgets on each other.
+    LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE)
 
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current.density
@@ -133,6 +136,7 @@ fun GamepadCustomizationScreen(
     var showImportDialog by remember { mutableStateOf(false) }
     var showExitDialog by remember { mutableStateOf(false) }
     var showAnchorMenu by remember { mutableStateOf(false) }
+    var showResponseMenu by remember { mutableStateOf(false) }
     var importJsonText by remember { mutableStateOf("") }
     var pillOffsetX by remember { mutableFloatStateOf(0f) }
     var pillOffsetY by remember { mutableFloatStateOf(0f) }
@@ -164,6 +168,7 @@ fun GamepadCustomizationScreen(
             showExportDialog = false
             showImportDialog = false
             showExitDialog = false
+            showResponseMenu = false
             importJsonText = ""
             pillOffsetX = 0f
             pillOffsetY = 0f
@@ -177,13 +182,13 @@ fun GamepadCustomizationScreen(
         scope.launch {
             if (editingProfileId != null) {
                 val existingName = profileStorage.listProfiles()
-                    .find { it.id == editingProfileId }?.name ?: "Custom Layout"
+                    .find { it.id == editingProfileId }?.name ?: context.getString(R.string.main_custom_layout)
                 profileStorage.saveProfile(editingProfileId, existingName, editableConfigs)
                 settingsRepository.setActiveProfileId(editingProfileId)
                 onProfileSaved?.invoke()
             } else if (isNewProfile) {
                 val newProfileId = "custom_${System.currentTimeMillis()}"
-                val newProfileName = "Custom Layout ${profileStorage.listProfiles().size + 1}"
+                val newProfileName = context.getString(R.string.main_new_profile, profileStorage.listProfiles().size + 1)
                 Log.d("CustomProfile", "Saving new profile $newProfileId ($newProfileName)")
                 profileStorage.saveProfile(newProfileId, newProfileName, editableConfigs)
                 settingsRepository.setActiveProfileId(newProfileId)
@@ -442,6 +447,37 @@ fun GamepadCustomizationScreen(
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text("Knob", color = PristineWhite, style = MaterialTheme.typography.bodySmall)
                                 Text("${(currentConfig.analogInnerScale * 100).toInt()}%", color = PristineWhite, style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Per-stick response curve, saved to this profile.
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Response", color = PristineWhite, style = MaterialTheme.typography.bodySmall)
+                            Spacer(modifier = Modifier.weight(1f))
+                            Box {
+                                TextButton(onClick = { showResponseMenu = true }) {
+                                    Text(currentConfig.responseMode.displayName, color = PristineWhite)
+                                }
+                                DropdownMenu(
+                                    expanded = showResponseMenu,
+                                    onDismissRequest = { showResponseMenu = false }
+                                ) {
+                                    StickResponseMode.entries.forEach { mode ->
+                                        DropdownMenuItem(
+                                            text = { Text(mode.displayName) },
+                                            onClick = {
+                                                editableConfigs = editableConfigs.toMutableMap().apply {
+                                                    put(selectedComponent!!, currentConfig.copy(responseMode = mode))
+                                                }
+                                                showResponseMenu = false
+                                            }
+                                        )
+                                    }
+                                }
                             }
                         }
                         Spacer(modifier = Modifier.height(8.dp))

@@ -36,12 +36,17 @@ fun DrawGamepad(
     heightDp: Int,
     gamepadState: GamepadReading,
     buttonConfigs: Map<ButtonComponent, ButtonConfig>,
+    // Legacy global fallback (kept so old callers still compile); per-stick
+    // ButtonConfig.responseMode wins whenever the stick config is present.
     stickResponseMode: StickResponseMode = StickResponseMode.default,
     gyroX: Float = 0f,
     gyroY: Float = 0f,
 ) {
-    // Assuming Landscape orientation
-    val baseDp = heightDp
+    // Assuming Landscape orientation. The short side drives all sizes so
+    // the layout stays identical in landscape, and degrades to a small but
+    // sane scale in portrait (e.g. rotation locked) instead of exploding:
+    // with heightDp the widgets would grow to full-screen size.
+    val baseDp = minOf(widthDp, heightDp)
 
     val deadZonePadding = baseDp / 18
 
@@ -83,7 +88,7 @@ fun DrawGamepad(
                     knobScale = config.analogInnerScale,
                     gamepadState = gamepadState,
                     type = AnalogStickType.LEFT,
-                    responseMode = stickResponseMode,
+                    responseMode = config.responseMode,
                     wholeAreaInteractive = true,
                     gyroOn = config.gyro,
                     gyroX = gyroX,
@@ -103,7 +108,7 @@ fun DrawGamepad(
                     knobScale = config.analogInnerScale,
                     gamepadState = gamepadState,
                     type = AnalogStickType.RIGHT,
-                    responseMode = stickResponseMode,
+                    responseMode = config.responseMode,
                     wholeAreaInteractive = true,
                     gyroOn = config.gyro,
                     gyroX = gyroX,

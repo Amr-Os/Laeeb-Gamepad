@@ -10,6 +10,36 @@ import io.github.kitswas.virtualgamepadmobile.data.ColorScheme
 import io.github.kitswas.virtualgamepadmobile.data.getColorFromBaseColor
 import androidx.compose.material3.ColorScheme as MaterialColorScheme
 
+// Fixed monochrome scheme (DESIGN.MD): grayscale only, dark always.
+// Status is conveyed by shape + text, never by hue.
+private fun monoDarkScheme(): MaterialColorScheme = darkColorScheme(
+    primary = PristineWhite,
+    onPrimary = PureBlack,
+    secondary = SubduedSilver,
+    onSecondary = PureBlack,
+    tertiary = SubduedSilver,
+    onTertiary = PureBlack,
+    background = DeepSurface,
+    onBackground = PristineWhite,
+    surface = DeepSurface,
+    onSurface = PristineWhite,
+    surfaceVariant = SlateGray,
+    onSurfaceVariant = SubduedSilver,
+    primaryContainer = SlateGray,
+    onPrimaryContainer = PristineWhite,
+    secondaryContainer = SlateGray,
+    onSecondaryContainer = PristineWhite,
+    tertiaryContainer = SlateGray,
+    onTertiaryContainer = PristineWhite,
+    error = PristineWhite,
+    onError = PureBlack,
+    errorContainer = SlateGray,
+    onErrorContainer = PristineWhite,
+    outline = SubduedSilver,
+    outlineVariant = SlateGray,
+    scrim = PureBlack,
+)
+
 private fun createDarkColorPalette(baseColor: BaseColor): MaterialColorScheme {
     val darkColorPrimary = getColorFromBaseColor(baseColor, true)
     val onDarkColorPrimary = contrasting(darkColorPrimary)
@@ -68,11 +98,7 @@ fun VirtualGamePadMobileTheme(
         ColorScheme.SYSTEM -> isSystemInDarkTheme()
     }
 
-    val colorScheme = if (darkTheme) {
-        createDarkColorPalette(baseColor)
-    } else {
-        createLightColorPalette(baseColor)
-    }
+    val colorScheme = monoDarkScheme()
 
     MaterialTheme(
         colorScheme = colorScheme,

@@ -52,10 +52,16 @@ private const val GYRO_FULL_TILT = 1.1f
 private const val GRAVITY_EARTH = SensorManager.GRAVITY_EARTH
 
 private const val DEFAULT_YAW_DEADZONE = 0.05f
-// Horizontal (yaw) / vertical (pitch) rotation, in radians, that corresponds to a full
-// stick deflection.
+// Horizontal (yaw/azimuth) rotation, in radians, that corresponds to a full stick
+// deflection (like turning a steering wheel).
 private const val GYRO_FULL_YAW = 0.6f
-const val GYRO_FULL_PITCH = 0.6f
+// The same gesture, mapped to the vertical axis: how far from "back fully toward the
+// ceiling" to "back fully toward the ground", in radians, produces a full deflection.
+// Mirroring [steerDeflectionFromAzimuth] keeps both axes consistent: X responds to
+// horizontal heading (azimuth o[0], confirmed working on-device) and Y responds to the
+// phone's own roll (o[2], the short-edge bend toward ceiling/ground) through the same
+// deadzone + deadzone-scaling pipeline.
+private const val GYRO_FULL_ROLL = 0.6f
 private val PI_RAD = PI.toFloat()
 
 /**
@@ -116,23 +122,29 @@ internal fun steerDeflectionFromAzimuth(
 }
 
 /**
- * Maps vertical rotation (pitch, in radians) of the phone to normalized forward/back
- * deflection in the range -1..1. Mirrors [steerDeflectionFromAzimuth] for the top/bottom
- * edge of the phone: nodding the top edge away or toward the user moves the stick along Y.
+ * Maps the top/bottom edge roll (in radians) of the phone to normalized up/down
+ * deflection in the range -1..1. Mirrors [steerDeflectionFromAzimuth] for the short
+ * edges of the phone.
  *
- * @param pitch current pitch angle in radians (top/bottom edge tilt)
- * @param refPitch calibrated pitch at the neutral hold
- * @param fullPitch radians of vertical rotation that produce a full deflection
+ * In a landscape gamepad grip the long edges are held by the hands, so bending the
+ * top/bottom edge toward the ceiling/ground is a rotation about the long axis. That
+ * rotation is the device's roll: [SensorManager.getOrientation] reports it in
+ * element [2] of the orientation array (roll = rotation about the device's forward
+ * axis, measured as the vertical lift of the top/bottom edge).
+ *
+ * @param roll current top/bottom edge roll angle in radians (positive = top edge up)
+ * @param refRoll calibrated angle at the neutral hold
+ * @param fullRoll radians of roll that produce a full deflection
  * @param deadzone radians of rotation left untouched around center
  */
-internal fun steerDeflectionFromPitch(
-    pitch: Float,
-    refPitch: Float,
-    fullPitch: Float = GYRO_FULL_PITCH,
+internal fun steerDeflectionFromRoll(
+    roll: Float,
+    refRoll: Float,
+    fullRoll: Float = GYRO_FULL_ROLL,
     deadzone: Float = DEFAULT_YAW_DEADZONE,
 ): Float {
-    val delta = normalizeRotationDelta(pitch - refPitch)
-    return deflectionFromRotationDelta(delta, fullPitch, deadzone)
+    val delta = normalizeRotationDelta(roll - refRoll)
+    return deflectionFromRotationDelta(delta, fullRoll, deadzone)
 }
 
 private fun normalizeRotationDelta(delta: Float): Float {

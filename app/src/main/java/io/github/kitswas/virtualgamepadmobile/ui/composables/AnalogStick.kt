@@ -332,30 +332,9 @@ fun AnalogStick(
     val wholeAreaGestureModifier: Modifier = if (wholeAreaInteractive && !gyroOn) {
         Modifier.pointerInput(Unit) {
             detectStickGesture(
-                onGrabStart = { startX, startY ->
-                    HapticUtils.performGestureStartFeedback(view)
-                    val dx = startX - componentSizePx / 2f
-                    val dy = startY - componentSizePx / 2f
-                    val startMagnitude = sqrt(dx * dx + dy * dy)
-                    if (startMagnitude > innerRadiusPx) {
-                        // Press started outside the inner knob: keep grabbing the
-                        // whole ring, snapping the knob to the touch point so the
-                        // whole area stays trackable.
-                        val clamp = if (startMagnitude > maxOffset) maxOffset / startMagnitude else 1f
-                        applyAnalogOffset(
-                            state = state,
-                            offsetX = dx * clamp,
-                            offsetY = dy * clamp,
-                            maxOffset = maxOffset,
-                            type = type,
-                            gamepadState = gamepadState,
-                            view = view,
-                            responseMode = responseMode,
-                        )
-                    }
-                    // Otherwise the press landed on the knob itself: leave it
-                    // centered until the user actually drags it.
-                },
+                // A plain press must NEVER move the knob: only actual drags past
+                // touch-slop reposition it (via onAbsoluteMove/onDragBy below).
+                onGrabStart = { _, _ -> },
                 onAbsoluteMove = { posX, posY ->
                     val dx = posX - componentSizePx / 2f
                     val dy = posY - componentSizePx / 2f

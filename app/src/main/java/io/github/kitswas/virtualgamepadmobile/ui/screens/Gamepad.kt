@@ -10,49 +10,38 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.util.Log
 import android.widget.Toast
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Devices.DESKTOP
 import androidx.compose.ui.tooling.preview.Devices.TABLET
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.LayoutDirection
 import io.github.kitswas.VGP_Data_Exchange.GamepadReading
 import io.github.kitswas.virtualgamepadmobile.R
-import io.github.kitswas.virtualgamepadmobile.data.CustomProfileStorage
 import io.github.kitswas.virtualgamepadmobile.data.GyroAssign
 import io.github.kitswas.virtualgamepadmobile.data.PreviewBase
 import io.github.kitswas.virtualgamepadmobile.data.PreviewHeightDp
 import io.github.kitswas.virtualgamepadmobile.data.PreviewWidthDp
 import io.github.kitswas.virtualgamepadmobile.data.SettingsRepository
-import io.github.kitswas.virtualgamepadmobile.data.StickResponseMode
 import io.github.kitswas.virtualgamepadmobile.data.defaultButtonConfigs
 import io.github.kitswas.virtualgamepadmobile.data.defaultPollingDelay
 import io.github.kitswas.virtualgamepadmobile.data.steerDeflectionFromAzimuth
-import io.github.kitswas.virtualgamepadmobile.data.steerDeflectionFromPitch
+import io.github.kitswas.virtualgamepadmobile.data.steerDeflectionFromRoll
 import io.github.kitswas.virtualgamepadmobile.network.ConnectionViewModel
 import io.github.kitswas.virtualgamepadmobile.ui.composables.DrawGamepad
 import io.github.kitswas.virtualgamepadmobile.ui.utils.findActivity
@@ -70,7 +59,9 @@ fun GamePad(
     connectionViewModel: ConnectionViewModel?,
     onNavigateBack: () -> Unit,
 ) {
-    LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_USER_LANDSCAPE)
+    // Fixed landscape (mirrors the activity-level lock in MainActivity): any
+    // rotation or portrait fallback piles the widgets on each other.
+    LockScreenOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE)
     val gamepadState by rememberSaveable { mutableStateOf(GamepadReading()) }
     val context = LocalContext.current
     val settingsRepository = remember { SettingsRepository(context) }
@@ -78,11 +69,6 @@ fun GamePad(
         settingsRepository.pollingDelay.collectAsState(defaultPollingDelay).value.toLong()
     val buttonConfigs =
         settingsRepository.buttonConfigs.collectAsState(defaultButtonConfigs).value
-    val stickResponseMode by settingsRepository.stickResponseMode.collectAsState(
-        initial = StickResponseMode.default
-    )
-    val activeProfileId by settingsRepository.activeProfileId.collectAsState(initial = "")
-    val profileStorage = remember { CustomProfileStorage(context) }
 
     // Which stick(s) the tilt sensors drive, derived from the per-stick gyro flags.
     val gyroAssign = GyroAssign.fromConfigs(buttonConfigs)
@@ -91,11 +77,11 @@ fun GamePad(
     var gyroValue by remember { mutableStateOf(0f to 0f) }
     // Latest horizontal heading (yaw, radians) from the rotation sensor, used for recentering.
     var latestAzimuth by remember { mutableFloatStateOf(0f) }
-    // Latest vertical tilt (pitch, radians) from the rotation sensor, used for recentering.
-    var latestPitch by remember { mutableFloatStateOf(0f) }
+    // Latest top/bottom edge bend (roll, radians) from the rotation sensor, used for recentering.
+    var latestBend by remember { mutableFloatStateOf(0f) }
     // Calibration references: angles captured when the stick(s) were centered.
     var yawRef by remember { mutableFloatStateOf(0f) }
-    var pitchRef by remember { mutableFloatStateOf(0f) }
+    var bendRef by remember { mutableFloatStateOf(0f) }
     var gyroEnabled by remember { mutableStateOf(false) }
 
     val configuration = LocalConfiguration.current
@@ -105,14 +91,12 @@ fun GamePad(
 
     val isStopping = remember { mutableStateOf(false) }
 
-    val scope = rememberCoroutineScope()
-
     // Rotation sensor: drives the assigned sticks when any gyro flag is set. The
     // calibration references are captured on the first reading after the sensor is
     // registered, so the neutral/stick-center position matches however the phone is
     // being held at that moment (e.g. in a gamepad grip) instead of absolute level.
     // Only rotation is used: the azimuth (yaw) drives X (left/right, like holding a
-    // steering wheel) and the pitch drives Y (top/bottom edge nodding toward/away).
+    // steering wheel) and the top/bottom edge bend (roll) drives Y.
     val sensorManager = remember {
         context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
     }
@@ -153,17 +137,18 @@ fun GamePad(
                 SensorManager.getRotationMatrixFromVector(rotation, event.values)
                 SensorManager.getOrientation(rotation, orientation)
                 // orientation[0] = azimuth (yaw about the world vertical axis)
-                // orientation[1] = pitch (top/bottom edge tilt)
+                // orientation[1] = pitch (unused)
+                // orientation[2] = roll (top/bottom edge lift about the long axis)
                 latestAzimuth = orientation[0]
-                latestPitch = orientation[1]
+                latestBend = orientation[2]
                 if (!calibrated && !gyroEnabled) {
                     yawRef = orientation[0]
-                    pitchRef = orientation[1]
+                    bendRef = latestBend
                     calibrated = true
                     gyroEnabled = true
                 }
                 val steerX = steerDeflectionFromAzimuth(orientation[0], yawRef)
-                val steerY = steerDeflectionFromPitch(orientation[1], pitchRef)
+                val steerY = steerDeflectionFromRoll(latestBend, bendRef)
                 publish(steerX, steerY)
             }
 
@@ -179,60 +164,20 @@ fun GamePad(
         }
     }
 
+    // Language changes must not affect the gamepad: force LTR so the Arabic
+    // RTL layout never mirrors sticks/buttons. No overlay pills — stick feel
+    // and gyro live in the profile editor widgets.
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
     Box(modifier = Modifier.fillMaxSize()) {
         DrawGamepad(
             screenWidth,
             screenHeight,
             gamepadState,
             buttonConfigs,
-            stickResponseMode,
-            gyroValue.first,
-            gyroValue.second,
+            gyroX = gyroValue.first,
+            gyroY = gyroValue.second,
         )
-
-        Column(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            GamepadPill(
-                text = "Joystick: ${stickResponseMode.displayName}",
-                onClick = {
-                    val next = StickResponseMode.entries[(stickResponseMode.ordinal + 1) % StickResponseMode.entries.size]
-                    scope.launch { settingsRepository.setStickResponseMode(next) }
-                    Toast.makeText(context, "Joystick: ${next.displayName}", Toast.LENGTH_SHORT).show()
-                }
-            )
-            GamepadPill(
-                text = "Gyro: ${gyroAssign.displayName}",
-                onClick = {
-                    val next = GyroAssign.entries[(gyroAssign.ordinal + 1) % GyroAssign.entries.size]
-                    val updatedConfigs = next.applyTo(buttonConfigs)
-                    scope.launch {
-                        settingsRepository.setAllButtonConfigs(updatedConfigs)
-                        val exists = activeProfileId.isNotEmpty() &&
-                            profileStorage.loadProfileConfigs(activeProfileId) != null
-                        if (exists) {
-                            val profileName = profileStorage.listProfiles()
-                                .find { it.id == activeProfileId }?.name ?: "Custom Layout"
-                            profileStorage.saveProfile(activeProfileId, profileName, updatedConfigs)
-                        }
-                    }
-                    Toast.makeText(context, "Gyro: ${next.displayName}", Toast.LENGTH_SHORT).show()
-                }
-            )
-            if (gyroAssign != GyroAssign.OFF) {
-                GamepadPill(
-                    text = "Recenter Gyro",
-                    onClick = {
-                        yawRef = latestAzimuth
-                        pitchRef = latestPitch
-                        Toast.makeText(context, "Gyro recentered", Toast.LENGTH_SHORT).show()
-                    }
-                )
-            }
-        }
+    }
     }
 
     val activity = LocalContext.current.findActivity()
@@ -294,28 +239,6 @@ fun GamePad(
             // Wait before next update
             delay(pollingDelay)
         }
-    }
-}
-
-@Composable
-private fun GamepadPill(
-    text: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Surface(
-        onClick = onClick,
-        modifier = modifier,
-        shape = RoundedCornerShape(50),
-        color = Color(0x66000000)
-    ) {
-        Text(
-            text = text,
-            color = Color.White,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
-        )
     }
 }
 
