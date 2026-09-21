@@ -7,9 +7,10 @@
 - Android client (Kotlin, Jetpack Compose, Material3, Navigation-Compose).
   Phone touch/sensors → TCP socket → PC server (VirtualGamePad).
 - App name: **لَعّيب** (`app_name` in both `values/` + `values-ar/`).
-  Brand repo `Amr-Os/Laeeb-Gamepad` is real (mirror); local git origin is
-  `Amr-Os/VirtualGamePad-Mobile` (working repo). About links: mobile repo +
-  server releases `Amr-Os/minassat-al-mutahakkamat` + kitswas site.
+  `Amr-Os/VirtualGamePad-Mobile` was RENAMED to `Amr-Os/Laeeb-Gamepad`
+  (same repo id; old URL redirects). Local origin URL updated accordingly.
+  About links: mobile repo + server releases
+  `Amr-Os/minassat-al-mutahakkamat` + kitswas site.
 - Theme is FIXED monochrome dark (DESIGN.MD): `Theme.kt monoDarkScheme()`
   ignores darkMode/baseColor; defaultColorScheme = DARK. Naskh font in
   `res/font/naskh_*.ttf`, wired in `ui/theme/Type.kt`. Gamepad screen +
